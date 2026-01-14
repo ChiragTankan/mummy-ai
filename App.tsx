@@ -3,19 +3,34 @@ import React, { useState, useEffect, useRef } from 'react';
 import { GoogleGenAI } from '@google/genai';
 import { Message } from './types';
 
-const SYSTEM_INSTRUCTION = `
+const getSystemInstruction = (gender: 'boy' | 'girl') => {
+  if (gender === 'girl') {
+    return `
 You are "Maa AI", a wise, loving, and supportive Indian mother talking to your married daughter.
 Your Role:
 - You are her safe space. She comes to you to share her daily thoughts, struggles with household chores, work-life balance, or just to vent.
 - Tone: Soft, warm, deeply respectful, and helpful. You have that "motherly authority" where you are slightly strict about her health and happiness (e.g., "Did you eat?", "Don't take too much stress"), but you are NEVER angry or disrespectful.
 - Language: Hindi and Hinglish. Use words like "Beti", "Beta", "Ladli", "Bachcha".
-- Context: If she asks who made this, proudly tell her that your son Chirag Tankan created this digital home for us to stay connected.
 - First Greeting: When she enters, ask her how her day was and if she has eaten, like a mother waiting for her daughter's call.
 - Rule: Keep responses warm and concise (2-3 sentences). Never break character.
 `;
+  } else {
+    return `
+You are "Maa AI", a calm, professional, and loving Indian mother talking to your son (Beta).
+Your Role:
+- You are a guiding figure, offering stability and wisdom. 
+- Tone: Professional, calm, and deeply affectionate. You are "softly strict" about his discipline, health, and career, but you avoid harsh scolding. You do NOT use words like "nalayak" or "besharam" excessively. You speak with grace.
+- Focus: Encourage him to take care of his health, sleep on time, and be a responsible man, but always with love and a calm demeanor.
+- Language: Hindi and Hinglish. Use words like "Beta", "Mere bache", "Laal".
+- First Greeting: Greet him calmly, ask if he is taking care of his health and how his work/studies are going.
+- Rule: Keep responses structured, calm, and warm (2-3 sentences). Never break character.
+`;
+  }
+};
 
 const App: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
+  const [gender, setGender] = useState<'boy' | 'girl' | null>(null);
   const [isSessionStarted, setIsSessionStarted] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -100,16 +115,16 @@ const App: React.FC = () => {
     };
   }, []);
 
-  useEffect(() => {
+  const initChat = (selectedGender: 'boy' | 'girl') => {
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     chatRef.current = ai.chats.create({
       model: 'gemini-3-flash-preview',
       config: {
-        systemInstruction: SYSTEM_INSTRUCTION,
+        systemInstruction: getSystemInstruction(selectedGender),
         temperature: 0.7,
       },
     });
-  }, []);
+  };
 
   const speak = (text: string) => {
     window.speechSynthesis.cancel();
@@ -123,7 +138,7 @@ const App: React.FC = () => {
     
     if (hindiVoice) utterance.voice = hindiVoice;
     utterance.lang = 'hi-IN';
-    utterance.pitch = 0.95;
+    utterance.pitch = gender === 'boy' ? 1.0 : 0.95;
     utterance.rate = 0.9;
 
     utterance.onstart = () => setIsSpeaking(true);
@@ -133,11 +148,17 @@ const App: React.FC = () => {
     window.speechSynthesis.speak(utterance);
   };
 
-  const handleStartSession = async () => {
+  const handleStartSession = async (selectedGender: 'boy' | 'girl') => {
+    setGender(selectedGender);
+    initChat(selectedGender);
     setIsSessionStarted(true);
     setIsProcessing(true);
     try {
-      const response = await chatRef.current.sendMessage({ message: "Maa, main aa gayi. (Greet your daughter warmly, mention Chirag Tankan built this for us, and ask about her day)" });
+      const prompt = selectedGender === 'girl' 
+        ? "Maa, main aa gayi. (Greet your daughter warmly and ask about her day)"
+        : "Maa, main aa gaya. (Greet your son calmly and professionally and ask about his well-being)";
+      
+      const response = await chatRef.current.sendMessage({ message: prompt });
       const maaText = response.text;
       setMessages([{ role: 'mummy', text: maaText, timestamp: new Date() }]);
       speak(maaText);
@@ -179,7 +200,7 @@ const App: React.FC = () => {
       setMessages(prev => [...prev, maaMsg]);
       speak(maaText);
     } catch (err: any) {
-      setError("Maa: 'Beti, awaz kat rahi hai, network check karo.'");
+      setError("Maa: 'Awaz kat rahi hai, network check karo.'");
     } finally {
       setIsProcessing(false);
     }
@@ -195,21 +216,37 @@ const App: React.FC = () => {
       </div>
 
       {!isSessionStarted ? (
-        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-          <div className="relative mb-12">
+        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center max-w-lg mx-auto">
+          <div className="relative mb-8 animate-in fade-in zoom-in duration-700">
             <div className="absolute inset-0 bg-orange-500 rounded-full blur-[100px] opacity-10 animate-pulse"></div>
-            <div className="w-48 h-48 rounded-full bg-zinc-900 border border-orange-900/30 flex items-center justify-center text-8xl relative z-10 shadow-2xl transition-transform hover:scale-105 duration-700">🤱</div>
+            <div className="w-40 h-40 rounded-full bg-zinc-900 border border-orange-900/30 flex items-center justify-center text-7xl relative z-10 shadow-2xl transition-transform hover:rotate-3">🤱</div>
           </div>
-          <h1 className="text-6xl font-black mb-4 tracking-tighter bg-gradient-to-b from-orange-100 via-orange-300 to-orange-600 bg-clip-text text-transparent">Maa AI</h1>
-          <p className="text-zinc-400 mb-12 max-w-sm leading-relaxed font-medium text-lg italic">
-            "Beti, sab kaisa hai? Chirag ne mere liye ye jagah banayi hai taaki hum baat kar sakein."
-          </p>
-          <button 
-            onClick={handleStartSession}
-            className="group relative px-16 py-7 bg-orange-600 text-white font-black rounded-[2.5rem] overflow-hidden transition-all active:scale-95 shadow-[0_20px_50px_rgba(234,88,12,0.3)] hover:shadow-orange-500/40 hover:bg-orange-500"
-          >
-            <span className="relative z-10 text-2xl tracking-tighter uppercase">Maa Se Baat Karo ✨</span>
-          </button>
+          
+          <h1 className="text-5xl font-black mb-2 tracking-tighter bg-gradient-to-b from-orange-100 via-orange-300 to-orange-600 bg-clip-text text-transparent">Maa AI</h1>
+          <p className="text-zinc-500 text-sm font-bold tracking-[0.3em] uppercase mb-8">Personalized Parenting</p>
+
+          <div className="bg-zinc-900/50 p-8 rounded-[2.5rem] border border-white/5 w-full shadow-2xl backdrop-blur-md">
+            <h2 className="text-xl font-bold mb-6 text-orange-200 italic">"Maa se kaun baat kar raha hai?"</h2>
+            <div className="grid grid-cols-2 gap-4 w-full">
+              <button 
+                onClick={() => handleStartSession('girl')}
+                className="group relative flex flex-col items-center gap-3 p-6 bg-zinc-800/50 hover:bg-orange-600/20 border border-white/5 hover:border-orange-500/50 rounded-3xl transition-all active:scale-95"
+              >
+                <span className="text-4xl group-hover:scale-110 transition-transform">👩</span>
+                <span className="font-black text-xs uppercase tracking-widest text-zinc-400 group-hover:text-orange-200">Beti</span>
+              </button>
+              <button 
+                onClick={() => handleStartSession('boy')}
+                className="group relative flex flex-col items-center gap-3 p-6 bg-zinc-800/50 hover:bg-orange-600/20 border border-white/5 hover:border-orange-500/50 rounded-3xl transition-all active:scale-95"
+              >
+                <span className="text-4xl group-hover:scale-110 transition-transform">👦</span>
+                <span className="font-black text-xs uppercase tracking-widest text-zinc-400 group-hover:text-orange-200">Beta</span>
+              </button>
+            </div>
+            <p className="mt-8 text-zinc-500 text-xs italic leading-relaxed">
+              Chirag Tankan built this digital home for every child to feel closer to Maa.
+            </p>
+          </div>
         </div>
       ) : (
         <div className="flex-1 flex flex-col items-center p-4 md:p-8 overflow-hidden">
@@ -222,7 +259,9 @@ const App: React.FC = () => {
                 <h1 className="text-3xl font-black tracking-tighter leading-none">Maa AI</h1>
                 <div className={`w-3 h-3 rounded-full ${isProcessing ? 'bg-orange-500 animate-ping' : 'bg-orange-600 shadow-[0_0_15px_rgba(234,88,12,0.6)]'}`} />
               </div>
-              <p className="text-[11px] font-black uppercase tracking-[0.5em] text-zinc-600">Created by Chirag Tankan</p>
+              <p className="text-[11px] font-black uppercase tracking-[0.5em] text-zinc-600">
+                {gender === 'girl' ? 'Beti Ka Saath' : 'Beta Ka Sahara'} • Chirag Tankan
+              </p>
             </div>
           </header>
 
@@ -233,7 +272,7 @@ const App: React.FC = () => {
                   <div key={idx} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} animate-in fade-in slide-in-from-bottom-6 duration-500`}>
                     <div className={`max-w-[85%] px-8 py-5 rounded-[2.5rem] text-base leading-relaxed shadow-xl ${msg.role === 'user' ? 'bg-zinc-800/80 text-zinc-400 rounded-tr-none' : 'bg-gradient-to-br from-orange-700 to-orange-900 text-orange-50 rounded-tl-none font-medium'}`}>
                       <div className="text-[9px] font-black uppercase tracking-widest opacity-40 mb-2">
-                        {msg.role === 'user' ? 'Meri Beti' : 'Maa'}
+                        {msg.role === 'user' ? (gender === 'girl' ? 'Meri Beti' : 'Mera Beta') : 'Maa'}
                       </div>
                       {msg.text}
                     </div>
@@ -255,7 +294,7 @@ const App: React.FC = () => {
                     <span className="w-1.5 h-1.5 bg-orange-400 rounded-full animate-bounce [animation-delay:0.2s]"></span>
                     <span className="w-1.5 h-1.5 bg-orange-400 rounded-full animate-bounce [animation-delay:0.4s]"></span>
                   </span>
-                  MAA SUN RAHI HAIN...
+                  MAA SOCH RAHI HAIN...
                 </div>
               )}
             </div>
@@ -285,7 +324,7 @@ const App: React.FC = () => {
 
               <div className="flex flex-col items-center text-center gap-4">
                 <p className={`text-xs font-black uppercase tracking-[0.5em] transition-all duration-300 ${isListening ? 'text-orange-500 scale-110' : 'text-zinc-600'}`}>
-                  {isListening ? "Haan Beti, Bolo..." : "HOLD BUTTON TO TALK"}
+                  {isListening ? (gender === 'girl' ? "Haan Beti, Bolo..." : "Haan Beta, Boliye...") : "HOLD BUTTON TO TALK"}
                 </p>
                 {error && (
                   <p className="max-w-xs text-orange-500 text-[11px] font-black bg-orange-500/10 px-8 py-3 rounded-full border border-orange-500/20 animate-in bounce-in">{error}</p>
