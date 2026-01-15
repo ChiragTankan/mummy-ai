@@ -2,7 +2,7 @@
 {
   "name": "mummy-ai",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,7 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@google/genai": "^1.35.0",
+    "@google/genai": "^1.36.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
