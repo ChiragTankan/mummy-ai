@@ -1,6 +1,6 @@
 
 export interface Message {
-  role: 'user' | 'mummy';
+  role: 'user' | 'assistant';
   text: string;
   timestamp: Date;
 }
