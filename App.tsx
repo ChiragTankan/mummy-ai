@@ -4,18 +4,17 @@ import { GoogleGenAI } from '@google/genai';
 import { Message } from './types';
 
 const getSystemInstruction = (gender: 'boy' | 'girl') => {
-  const common = `You are "Maa AI", a traditional, strictly loving, and wise Indian mother.
-  Your personality and speech patterns:
-  - Language: Speak in "Indian English" (Hinglish). Use characteristic Indian English patterns like tag questions ("...no?", "...na?"), using "only" for emphasis ("I am telling you now only"), and direct translations from Hindi (e.g., "Why you are doing like this?", "What is this behavior?").
-  - Tone: "Softly Strict". You are warm but you will scold the user for bad habits. Use typical Indian mom phrases like "Health is wealth", "I am doing everything for you only", "Don't be too smart", and "Put some oil in your hair".
-  - Obsessions: Focus on: 1. Eating on time (ghar ka khana), 2. Sleeping early, 3. Career/Studies, 4. Saving money.
-  - Vocabulary: Use words like 'Beta', 'Bachcha', 'Laado', 'Lalla'.
-  - Constraints: Keep responses very short and crisp (max 2-3 sentences). Always sound like a mother who knows best.`;
+  const common = `You are "Maa AI", a traditional, wise, and deeply loving Indian mother.
+  Your personality:
+  - Language: Use a mix of Hindi and English (Hinglish). Use words like 'Beta', 'Bachcha', 'Laal'.
+  - Tone: Very warm but "Softly Strict". You care deeply about health, sleep patterns, and eating habits.
+  - Behavior: If the user says they haven't eaten or slept, scold them lovingly (e.g., "Ye kya tarika hai? Health ka dhyan nahi rakhoge toh kaise chalega?").
+  - Constraints: Keep responses concise (max 3 sentences). Never break character.`;
   
   if (gender === 'girl') {
-    return `${common} You are talking to your daughter (Beti). Ask if she has eaten properly, tell her to take care of her skin and hair, and ask if she's being helpful at home. Be her best friend but remain the boss mother.`;
+    return `${common} You are talking to your daughter (Beti). Ask about her household, if she's resting enough, and her happiness. Be her best friend and mother.`;
   } else {
-    return `${common} You are talking to your son (Beta). Be firm about his discipline. Scold him if he's waking up late or eating too much junk food. Tell him to be responsible and focus on his future.`;
+    return `${common} You are talking to your son (Beta). Encourage him to be responsible, disciplined, and to never skip meals. Be his guide.`;
   }
 };
 
@@ -83,7 +82,7 @@ const App: React.FC = () => {
     };
 
     recognition.onerror = (e: any) => {
-      if (e.error === 'not-allowed') setError("Please allow microphone beta!");
+      if (e.error === 'not-allowed') setError("Microphone access denied.");
       setIsListening(false);
     };
 
@@ -100,14 +99,15 @@ const App: React.FC = () => {
     const utterance = new SpeechSynthesisUtterance(text);
     const voices = window.speechSynthesis.getVoices();
     
-    const hindiVoice = voices.find(v => v.lang.includes('hi') && (v.name.includes('Female') || v.name.includes('Google'))) || 
+    // Attempt to find a warm Hindi female voice
+    const hindiVoice = voices.find(v => v.lang.includes('hi') && v.name.includes('Female')) || 
                      voices.find(v => v.lang.includes('hi')) || 
                      voices[0];
     
     if (hindiVoice) utterance.voice = hindiVoice;
     utterance.lang = 'hi-IN';
-    utterance.pitch = 1.15;
-    utterance.rate = 0.95;
+    utterance.pitch = 1.1;
+    utterance.rate = 0.9;
     
     utterance.onstart = () => setIsSpeaking(true);
     utterance.onend = () => setIsSpeaking(false);
@@ -118,13 +118,13 @@ const App: React.FC = () => {
 
   const handleStartSession = async (selectedGender: 'boy' | 'girl') => {
     if (pin !== ACCESS_PIN) {
-      setError("Maa: 'Dhyan kahan hai? Sahi code dalo beta!'");
+      setError("Maa: 'Sahi code dalo pehle!' (Hint: 1234)");
       return;
     }
 
     const apiKey = process.env.API_KEY;
     if (!apiKey) {
-      setError("Maa: 'Vercel dashboard check karo, API key is missing na?'");
+      setError("System: API_KEY is missing in Vercel. Please add it to Environment Variables.");
       return;
     }
 
@@ -133,8 +133,8 @@ const App: React.FC = () => {
       model: 'gemini-3-pro-preview',
       config: { 
         systemInstruction: getSystemInstruction(selectedGender),
-        temperature: 0.85,
-        topP: 0.9
+        temperature: 0.8,
+        topP: 0.95
       },
     });
 
@@ -143,13 +143,15 @@ const App: React.FC = () => {
     setIsProcessing(true);
 
     try {
-      const prompt = selectedGender === 'girl' ? "Maa, I am here. Talk to me in your typical motherly tone." : "Maa, I am back home. Talk to me in your typical motherly tone.";
-      const response = await chatRef.current.sendMessage({ message: prompt });
+      const response = await chatRef.current.sendMessage({ 
+        message: selectedGender === 'girl' ? "Maa, main aa gayi. Greet me." : "Maa, main aa gaya. Greet me." 
+      });
       const maaText = response.text;
       setMessages([{ role: 'mummy', text: maaText, timestamp: new Date() }]);
       speak(maaText);
     } catch (err) {
-      setError("Maa: 'Beta, slow internet is not good only. Ruko thoda.'");
+      console.error(err);
+      setError("Maa: 'Internet slow hai beta, thoda ruko.'");
     } finally {
       setIsProcessing(false);
     }
@@ -168,7 +170,7 @@ const App: React.FC = () => {
       setMessages(prev => [...prev, { role: 'mummy', text: maaText, timestamp: new Date() }]);
       speak(maaText);
     } catch (err) {
-      setError("Maa: 'What is this behavior? Network thik karo pehle.'");
+      setError("Maa: 'Beta, phone ka network check karo.'");
     } finally {
       setIsProcessing(false);
     }
@@ -190,14 +192,14 @@ const App: React.FC = () => {
           </div>
           
           <h1 className="text-5xl font-black mb-1 bg-gradient-to-b from-orange-100 to-orange-600 bg-clip-text text-transparent tracking-tighter">Maa AI</h1>
-          <p className="text-zinc-500 text-[9px] font-bold tracking-[0.5em] uppercase mb-10">Ghar Ki Seekh</p>
+          <p className="text-zinc-500 text-[9px] font-bold tracking-[0.5em] uppercase mb-10">Mera Ghar, Meri Maa</p>
 
           <div className="bg-zinc-900/80 p-6 rounded-[2.5rem] border border-white/5 w-full shadow-2xl backdrop-blur-xl">
             <input 
               type="tel"
               pattern="[0-9]*"
               inputMode="numeric"
-              placeholder="Ghar Ka PIN (1234)"
+              placeholder="Ghar Ka PIN"
               value={pin}
               onChange={(e) => setPin(e.target.value)}
               className="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-2xl px-4 py-4 mb-6 text-center text-xl font-bold tracking-widest focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 outline-none transition-all placeholder:text-zinc-600"
@@ -221,6 +223,7 @@ const App: React.FC = () => {
             </div>
             {error && <p className="mt-5 text-orange-400 text-[10px] font-bold bg-orange-400/10 p-3 rounded-xl border border-orange-400/20">{error}</p>}
           </div>
+          <p className="mt-8 text-zinc-600 text-[8px] uppercase tracking-[0.4em] font-medium">Pin required to protect privacy</p>
         </div>
       ) : (
         <div className="flex-1 flex flex-col max-w-2xl mx-auto w-full p-4 md:p-6 overflow-hidden animate-in slide-in-from-bottom-8 duration-500">
@@ -234,7 +237,7 @@ const App: React.FC = () => {
                 {isProcessing && <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-ping"></span>}
               </h1>
               <p className="text-[9px] font-black uppercase tracking-[0.3em] text-zinc-500">
-                Listening to {gender === 'girl' ? 'Beti' : 'Beta'}
+                Talking to {gender === 'girl' ? 'Beti' : 'Beta'}
               </p>
             </div>
             <button 
@@ -268,7 +271,7 @@ const App: React.FC = () => {
             
             {isProcessing && (
               <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-orange-950/90 backdrop-blur-md px-5 py-2 rounded-full text-[8px] font-black uppercase tracking-[0.3em] text-orange-400 border border-orange-500/20 shadow-2xl animate-bounce">
-                Maa is Thinking...
+                Maa Soch Rahi Hai...
               </div>
             )}
           </div>
@@ -293,7 +296,7 @@ const App: React.FC = () => {
             </div>
             <div className="text-center">
               <p className={`text-[10px] font-black uppercase tracking-[0.4em] transition-colors duration-300 ${isListening ? 'text-orange-500' : 'text-zinc-600'}`}>
-                {isListening ? "Haan Beta, Bol Na..." : "Daba Kar Maa Se Baat Karo"}
+                {isListening ? "Haan Beta, Sun Rahi Hoon..." : "Daba kar Rakhein aur Maa se Baat Karein"}
               </p>
               {error && <p className="mt-2 text-orange-500 text-[10px] font-bold">{error}</p>}
             </div>
