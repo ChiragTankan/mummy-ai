@@ -3,7 +3,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Mummy AI - Chirag Tankan</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -35,10 +35,14 @@
       animation: pulse-slow 4s ease-in-out infinite;
     }
 
-    /* Prevent text selection on buttons for better mobile experience */
     button {
       -webkit-tap-highlight-color: transparent;
       user-select: none;
+    }
+
+    /* Gradient animation for the background */
+    .bg-gradient-maa {
+      background: radial-gradient(circle at center, rgba(234, 88, 12, 0.05) 0%, rgba(9, 9, 11, 1) 70%);
     }
   </style>
 <script type="importmap">
@@ -54,7 +58,7 @@
 }
 </script>
 </head>
-<body>
+<body class="bg-gradient-maa">
   <div id="root"></div>
   <script type="module" src="/index.tsx"></script>
 </body>

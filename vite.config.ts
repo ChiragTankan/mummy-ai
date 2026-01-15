@@ -5,7 +5,7 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   plugins: [react()],
   define: {
-    // This allows process.env.API_KEY to work in the browser as requested
+    // This bridges the environment variable from Vercel to the browser app
     'process.env.API_KEY': JSON.stringify(process.env.API_KEY)
   }
 });
